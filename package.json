@@ -6,9 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "model": "node scripts/create-model.mjs",
+    "seed": "node scripts/seed.mjs",
+    "setup:contentful": "npm run model && npm run seed",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@contentful/rich-text-react-renderer": "^16.2.2",
+    "@contentful/rich-text-types": "^17.2.7",
+    "contentful": "^11.12.10",
+    "contentful-management": "^12.20.0",
+    "dotenv": "^18.0.9",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"

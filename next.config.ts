@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  images: {
+    // Contentful serves uploaded images from this host.
+    remotePatterns: [{ protocol: "https", hostname: "images.ctfassets.net" }],
+  },
 };
 
 export default nextConfig;
