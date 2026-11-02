@@ -8,6 +8,7 @@ import type {
   SearchResult,
   SiteSettingsFields,
 } from "./types";
+import { getPageTree } from "./pages";
 import { getProducts } from "./store";
 
 // Content Delivery API client. It only runs on the server, so the token never reaches the browser.
@@ -38,7 +39,8 @@ export function getSiteSettings() {
   return safe(
     "site settings",
     async () => {
-      const res = await client.getEntries({ content_type: "siteSettings", limit: 1, include: 2 });
+      // include: 3 reaches settings -> menu group -> page (so footer/menu pages resolve too).
+      const res = await client.getEntries({ content_type: "siteSettings", limit: 1, include: 3 });
       return res.items[0] ? (res.items[0].fields as unknown as SiteSettingsFields) : null;
     },
     null
@@ -56,6 +58,18 @@ export function getPage(slug: string) {
         limit: 1,
         include: 4,
       });
+      return res.items[0] ? (res.items[0].fields as unknown as PageFields) : null;
+    },
+    null
+  );
+}
+
+// Same as getPage, but by entry ID. The route finds the ID from the URL with the page tree.
+export function getPageById(id: string) {
+  return safe(
+    `page id "${id}"`,
+    async () => {
+      const res = await client.getEntries({ content_type: "page", "sys.id": id, limit: 1, include: 4 });
       return res.items[0] ? (res.items[0].fields as unknown as PageFields) : null;
     },
     null
@@ -153,6 +167,7 @@ function searchArticlesAndPages(query: string) {
         limit: 8,
         include: 0,
       });
+      const tree = await getPageTree(); // pages can be nested, so their URL comes from the tree
       return res.items.map((item): SearchResult => {
         const type = item.sys.contentType.sys.id as "article" | "page";
         const f = item.fields as unknown as { title: string; slug: string; summary?: string; description?: string };
@@ -161,7 +176,7 @@ function searchArticlesAndPages(query: string) {
           type,
           title: f.title,
           summary: f.summary ?? f.description,
-          url: type === "article" ? `/articles/${f.slug}` : f.slug === "home" ? "/" : `/${f.slug}`,
+          url: type === "article" ? `/articles/${f.slug}` : tree.pathOf(item.sys.id),
         };
       });
     },

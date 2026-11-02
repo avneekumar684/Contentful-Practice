@@ -132,16 +132,73 @@ await upsertEntry("page", "page-home", {
     "products-home-living", "list-latest", "promo-learn", "news-signup",
   ]),
 });
+// The page TREE. Each page only says who its parent is. The code builds the URLs:
+//   Home
+//   |- About                     /about
+//   |  |- Contentful concepts    /about/concepts
+//   |  |  '- REST vs GraphQL     /about/concepts/rest-vs-graphql
+//   |  '- How it's built         /about/how-its-built
+//   '- Help                      /help
+//      |- Shipping & returns     /help/shipping-returns
+//      '- Contact                /help/contact
+const parentOf = (id) => ({ parent: L(entryRef(id)) });
+
+await upsertEntry("hero", "hero-concepts", fields({
+  heading: "Contentful concepts",
+  subheading: "The building blocks of this project, one card each.",
+}));
+await upsertEntry("hero", "hero-how", fields({
+  heading: "How it's built",
+  subheading: "Content in Contentful, pages in Next.js, and a few scripts that keep them in sync.",
+}));
+await upsertEntry("hero", "hero-rest-graphql", fields({
+  heading: "REST vs GraphQL",
+  subheading: "Two ways to read the same content. This page is three levels deep in the page tree.",
+}));
+await upsertEntry("hero", "hero-help", fields({
+  heading: "Help centre",
+  subheading: "Delivery, returns and ways to reach us.",
+}));
+await upsertEntry("featureGrid", "grid-stack", {
+  ...fields({ title: "What is inside", intro: "The pieces you can explain to your team." }),
+  features: refs(["con-code", "con-rest", "con-graphql"]),
+});
+await upsertEntry("featureGrid", "grid-apis", {
+  ...fields({ title: "Which API for what", intro: "REST for whole pages, GraphQL for lists and filters." }),
+  features: refs(["con-rest", "con-graphql"]),
+});
+
 await upsertEntry("page", "page-about", {
-  ...fields({ title: "About", slug: "about", description: "What this project is and which Contentful features it uses." }),
-  sections: refs(["hero-about", "grid-why", "grid-concepts", "cta-explore"]),
+  ...fields({ title: "About", slug: "about", showInMenu: false, description: "What this project is and which Contentful features it uses." }),
+  sections: refs(["hero-about", "grid-why", "cta-explore"]),
+});
+await upsertEntry("page", "page-concepts", {
+  ...fields({ title: "Contentful concepts", slug: "concepts", showInMenu: true, menuOrder: 1, description: "Every Contentful feature used here." }),
+  ...parentOf("page-about"),
+  sections: refs(["hero-concepts", "grid-concepts"]),
+});
+await upsertEntry("page", "page-rest-graphql", {
+  ...fields({ title: "REST vs GraphQL", slug: "rest-vs-graphql", showInMenu: true, menuOrder: 1, description: "Which API this project uses where." }),
+  ...parentOf("page-concepts"),
+  sections: refs(["hero-rest-graphql", "grid-apis"]),
+});
+await upsertEntry("page", "page-how", {
+  ...fields({ title: "How it's built", slug: "how-its-built", menuLabel: "How it's built", showInMenu: true, menuOrder: 2, description: "The stack in one page." }),
+  ...parentOf("page-about"),
+  sections: refs(["hero-how", "grid-stack"]),
+});
+await upsertEntry("page", "page-help", {
+  ...fields({ title: "Help", slug: "help", showInMenu: false, description: "Help centre." }),
+  sections: refs(["hero-help", "grid-usp"]),
 });
 await upsertEntry("page", "page-shipping", {
-  ...fields({ title: "Shipping & returns", slug: "shipping-returns", description: "Delivery times and the returns policy." }),
+  ...fields({ title: "Shipping & returns", slug: "shipping-returns", showInMenu: true, menuOrder: 1, description: "Delivery times and the returns policy." }),
+  ...parentOf("page-help"),
   sections: refs(["hero-shipping", "grid-usp"]),
 });
 await upsertEntry("page", "page-contact", {
-  ...fields({ title: "Contact", slug: "contact", description: "How to reach us." }),
+  ...fields({ title: "Contact", slug: "contact", showInMenu: true, menuOrder: 2, description: "How to reach us." }),
+  ...parentOf("page-help"),
   sections: refs(["hero-contact", "cta-explore"]),
 });
 
@@ -185,11 +242,12 @@ await upsertEntry("linkGroup", "col-shop", {
 });
 await upsertEntry("linkGroup", "col-company", {
   ...fields({ title: "Company" }),
-  links: refs(["link-about", "link-journal", "link-contact"]),
+  // Pages and custom links can be mixed. Pages keep the right URL even if their slug changes.
+  links: refs(["page-about", "link-journal", "page-contact"]),
 });
 await upsertEntry("linkGroup", "col-help", {
   ...fields({ title: "Help" }),
-  links: refs(["link-shipping", "link-contact", "link-search"]),
+  links: refs(["page-shipping", "page-contact", "link-search"]),
 });
 
 console.log("Site settings...");
@@ -201,7 +259,8 @@ await upsertEntry("siteSettings", "site-settings", {
     supportText: "Help: support@example.com",
     footerText: "A practice project built with Contentful and Next.js.",
   }),
-  navigation: refs(["group-shop", "link-deals", "group-journal", "link-about"]),
+  // "page-about" is a PAGE, so its dropdown (Contentful concepts, How it's built) is filled in automatically.
+  navigation: refs(["group-shop", "link-deals", "group-journal", "page-about"]),
   footerColumns: refs(["col-shop", "col-company", "col-help"]),
   socialLinks: refs(["link-github", "link-x", "link-linkedin"]),
 });

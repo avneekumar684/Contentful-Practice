@@ -42,6 +42,10 @@ export type CtaBannerFields = { heading: string; text?: string; buttonLabel?: st
 export type PageFields = {
   title: string;
   slug: string;
+  parent?: Ref<PageFields>; // the page above this one in the tree (empty = top level)
+  showInMenu?: boolean;
+  menuOrder?: number;
+  menuLabel?: string;
   description?: string;
   sections?: Ref<Record<string, unknown>>[];
 };
@@ -52,7 +56,7 @@ export type SiteSettingsFields = {
   announcement?: string;
   supportText?: string;
   // Each menu item is either a plain `link` or a `linkGroup` (mega-menu panel).
-  navigation?: Ref<LinkFields | LinkGroupFields>[];
+  navigation?: Ref<LinkFields | LinkGroupFields | PageFields>[];
   footerColumns?: Ref<LinkGroupFields>[];
   socialLinks?: Ref<LinkFields>[];
   footerText?: string;
@@ -137,7 +141,7 @@ export type NewsletterFields = { heading: string; text?: string; buttonLabel?: s
 export type LinkGroupFields = {
   title: string;
   url?: string;
-  links?: Ref<LinkFields>[];
+  links?: Ref<LinkFields | PageFields>[]; // custom links or pages
   blurb?: string;
   image?: CfAsset;
 };
