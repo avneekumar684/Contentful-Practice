@@ -49,9 +49,13 @@ export type PageFields = {
 export type SiteSettingsFields = {
   siteName: string;
   tagline?: string;
-  navigation?: Ref<LinkFields>[];
+  announcement?: string;
+  supportText?: string;
+  // Each menu item is either a plain `link` or a `linkGroup` (mega-menu panel).
+  navigation?: Ref<LinkFields | LinkGroupFields>[];
+  footerColumns?: Ref<LinkGroupFields>[];
+  socialLinks?: Ref<LinkFields>[];
   footerText?: string;
-  footerLinks?: Ref<LinkFields>[];
 };
 
 // ---- simplified shapes the UI uses ----
@@ -68,8 +72,72 @@ export type ArticleSummary = {
 
 export type SearchResult = {
   id: string;
-  type: "article" | "page";
+  type: "product" | "article" | "page";
   title: string;
   summary?: string;
   url: string;
+  // Only products have these:
+  price?: number;
+  imageUrl?: string;
+};
+
+// ---- store (loaded with GraphQL) ----
+export type Img = { url: string; width: number; height: number; title?: string };
+
+export type Product = {
+  id: string;
+  name: string;
+  slug: string;
+  sku?: string;
+  brand?: string;
+  price: number;
+  compareAtPrice?: number;
+  shortDescription: string;
+  description?: Document;
+  images: Img[];
+  categoryName?: string;
+  categorySlug?: string;
+  tags: string[];
+  rating?: number;
+  reviewCount?: number;
+  inStock: boolean;
+  featured: boolean;
+  badge?: string;
+};
+
+export type ProductCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image?: Img;
+};
+
+// ---- new content types used by page sections ----
+export type ProductGridFields = {
+  title: string;
+  intro?: string;
+  category?: Ref<{ slug: string }>;
+  onlyFeatured?: boolean;
+  count?: number;
+  linkLabel?: string;
+  linkUrl?: string;
+};
+export type CategoryGridFields = { title: string; intro?: string; categories?: Ref<CategoryImageFields>[] };
+export type CategoryImageFields = { name: string; slug: string; description?: string; image?: CfAsset };
+export type PromoBannerFields = {
+  heading: string;
+  text?: string;
+  image?: CfAsset;
+  buttonLabel?: string;
+  buttonUrl?: string;
+  theme?: "light" | "dark";
+};
+export type NewsletterFields = { heading: string; text?: string; buttonLabel?: string };
+export type LinkGroupFields = {
+  title: string;
+  url?: string;
+  links?: Ref<LinkFields>[];
+  blurb?: string;
+  image?: CfAsset;
 };

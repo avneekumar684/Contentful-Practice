@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatPrice } from "@/lib/format";
 import type { SearchResult } from "@/lib/types";
 
 // Global search box (lives in the header on every page).
@@ -63,7 +64,7 @@ export default function SearchBox() {
         <input
           className="search__input"
           type="search"
-          placeholder="Search articles..."
+          placeholder="Search products and articles..."
           aria-label="Search the site"
           value={query}
           onChange={(e) => {
@@ -84,8 +85,12 @@ export default function SearchBox() {
             {results.slice(0, 5).map((r) => (
               <li key={r.id}>
                 <a href={r.url} onClick={() => setOpen(false)}>
+                  {r.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="search__thumb" src={`${r.imageUrl}?w=80&h=80&fit=fill&fm=webp`} alt="" />
+                  )}
                   <span className="search__title">{r.title}</span>
-                  <span className="search__type">{r.type}</span>
+                  <span className="search__type">{r.price !== undefined ? formatPrice(r.price) : r.type}</span>
                 </a>
               </li>
             ))}

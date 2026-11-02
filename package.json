@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "model": "node scripts/create-model.mjs",
-    "seed": "node scripts/seed.mjs",
+    "seed": "node scripts/seed-blog.mjs && node scripts/seed-store.mjs && node scripts/seed-site.mjs",
     "setup:contentful": "npm run model && npm run seed",
     "typecheck": "tsc --noEmit"
   },

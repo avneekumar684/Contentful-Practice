@@ -8,6 +8,7 @@ import type {
   SearchResult,
   SiteSettingsFields,
 } from "./types";
+import { getProducts } from "./store";
 
 // Content Delivery API client. It only runs on the server, so the token never reaches the browser.
 // `withoutUnresolvableLinks` drops references to unpublished entries instead of returning broken links.
@@ -121,15 +122,35 @@ export function getCategories() {
   );
 }
 
-// Full-text search across articles and pages, using Contentful's `query` parameter.
-export function searchContent(query: string) {
+// Global search. Two Contentful APIs work together here:
+//   - products   -> GraphQL (filter on name, description and brand)
+//   - articles + pages -> REST full-text search (the `query` parameter)
+export async function searchContent(query: string): Promise<SearchResult[]> {
+  const [productResults, textResults] = await Promise.all([searchProducts(query), searchArticlesAndPages(query)]);
+  return [...productResults, ...textResults];
+}
+
+async function searchProducts(query: string): Promise<SearchResult[]> {
+  const { products } = await getProducts({ search: query, pageSize: 6 });
+  return products.map((p) => ({
+    id: p.id,
+    type: "product",
+    title: p.name,
+    summary: p.shortDescription,
+    url: `/product/${p.slug}`,
+    price: p.price,
+    imageUrl: p.images[0]?.url,
+  }));
+}
+
+function searchArticlesAndPages(query: string) {
   return safe(
     "search",
     async () => {
       const res = await client.getEntries({
         query,
         "sys.contentType.sys.id[in]": ["article", "page"],
-        limit: 12,
+        limit: 8,
         include: 0,
       });
       return res.items.map((item): SearchResult => {

@@ -2,8 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // Contentful serves uploaded images from this host.
-    remotePatterns: [{ protocol: "https", hostname: "images.ctfassets.net" }],
+    // Use Contentful's Images API (see src/lib/contentful-image-loader.ts).
+    loader: "custom",
+    loaderFile: "./src/lib/contentful-image-loader.ts",
   },
 };
 

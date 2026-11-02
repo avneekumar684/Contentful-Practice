@@ -1,58 +1,6 @@
-// Usage: npm run seed
-// Fills the space with sample content for the "Contentful Compass" learning site:
-// images, categories, articles, pages, navigation. Safe to run again (fixed IDs).
-import sharp from "sharp";
-import { cma, scope, spaceId, isNotFound } from "./client.mjs";
-
-const LOCALE = "en-US";
-const L = (value) => ({ [LOCALE]: value });
-const fields = (obj) =>
-  Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined).map(([k, v]) => [k, L(v)]));
-const entryRef = (id) => ({ sys: { type: "Link", linkType: "Entry", id } });
-const assetRef = (id) => ({ sys: { type: "Link", linkType: "Asset", id } });
-
-// ---------- helpers: create-or-update + publish ----------
-async function upsertEntry(contentTypeId, entryId, data) {
-  const params = { ...scope, entryId };
-  let entry;
-  try {
-    const existing = await cma.entry.get(params);
-    entry = await cma.entry.update(params, { ...existing, fields: data });
-  } catch (err) {
-    if (!isNotFound(err)) throw err;
-    entry = await cma.entry.createWithId({ ...scope, contentTypeId, entryId }, { fields: data });
-  }
-  await cma.entry.publish(params, entry);
-  console.log(`  entry  ${contentTypeId}/${entryId}`);
-  return entryId;
-}
-
-async function upsertAsset(assetId, title, buffer, fileName) {
-  const params = { ...scope, assetId };
-  try {
-    const existing = await cma.asset.get(params);
-    if (existing.sys.publishedVersion) return assetId;
-  } catch (err) {
-    if (!isNotFound(err)) throw err;
-    const upload = await cma.upload.create({ spaceId }, { file: buffer });
-    await cma.asset.createWithId(params, {
-      fields: {
-        title: L(title),
-        description: L(title),
-        file: L({
-          fileName,
-          contentType: "image/jpeg",
-          uploadFrom: { sys: { type: "Link", linkType: "Upload", id: upload.sys.id } },
-        }),
-      },
-    });
-  }
-  const created = await cma.asset.get(params);
-  const processed = await cma.asset.processForAllLocales(scope, created, { processingCheckWait: 1000 });
-  await cma.asset.publish(params, processed);
-  console.log(`  asset  ${assetId}`);
-  return assetId;
-}
+// Usage: node scripts/seed-blog.mjs   (run by `npm run seed`)
+// Learning blog content: article images, categories, 6 articles about Contentful, and feature cards.
+import { uploadSvg, upsertEntry, fields, entryRef, assetRef, L, p, h2, ul, quote, doc, t } from "./seed-helpers.mjs";
 
 // ---------- generated images (our own artwork, no third-party content) ----------
 function artwork(c1, c2, shapes) {
@@ -75,22 +23,6 @@ const images = {
   "img-modeling": ["Modeling cover", artwork("#6d28d9", "#c4b5fd", squares)],
   "img-apis": ["APIs cover", artwork("#b45309", "#fcd34d", bars)],
 };
-
-// ---------- rich text builders ----------
-const t = (value, marks = []) => ({ nodeType: "text", value, marks: marks.map((type) => ({ type })), data: {} });
-const p = (...children) => ({
-  nodeType: "paragraph",
-  data: {},
-  content: children.map((c) => (typeof c === "string" ? t(c) : c)),
-});
-const h2 = (value) => ({ nodeType: "heading-2", data: {}, content: [t(value)] });
-const ul = (...items) => ({
-  nodeType: "unordered-list",
-  data: {},
-  content: items.map((item) => ({ nodeType: "list-item", data: {}, content: [p(item)] })),
-});
-const quote = (value) => ({ nodeType: "blockquote", data: {}, content: [p(value)] });
-const doc = (...content) => ({ nodeType: "document", data: {}, content });
 
 // ---------- sample articles ----------
 const articles = [
@@ -200,13 +132,10 @@ const articles = [
 ];
 
 // ---------- run ----------
-console.log("Uploading images...");
-for (const [id, [title, svg]] of Object.entries(images)) {
-  const jpg = await sharp(svg).jpeg({ quality: 85 }).toBuffer();
-  await upsertAsset(id, title, jpg, `${id}.jpg`);
-}
+console.log("Blog images...");
+for (const [id, [title, svg]] of Object.entries(images)) await uploadSvg(id, title, svg);
 
-console.log("Categories...");
+console.log("Article categories...");
 await upsertEntry("category", "cat-basics", fields({ name: "Basics", slug: "basics", description: "Start here: the core ideas." }));
 await upsertEntry("category", "cat-modeling", fields({ name: "Modeling", slug: "modeling", description: "How to structure content." }));
 await upsertEntry("category", "cat-apis", fields({ name: "APIs", slug: "apis", description: "Getting content in and out." }));
@@ -220,77 +149,4 @@ for (const a of articles) {
   });
 }
 
-console.log("Features...");
-const featureData = [
-  ["feat-edit", "📝", "Edit without code", "Editors change text and images in Contentful. No developer needed."],
-  ["feat-reuse", "🔁", "Reuse everywhere", "Write content once, show it on the web, in an app or anywhere else."],
-  ["feat-fast", "⚡", "Fast by design", "Content is delivered from a global CDN and rendered by Next.js."],
-  ["feat-safe", "🔒", "Safe publishing", "Draft, review and publish. Visitors only see what is published."],
-];
-for (const [id, icon, title, description] of featureData) {
-  await upsertEntry("feature", id, fields({ title, description, icon }));
-}
-
-console.log("Sections...");
-await upsertEntry("hero", "hero-home", {
-  ...fields({
-    heading: "Learn Contentful, one small step at a time",
-    subheading: "A beginner-friendly guide, built with Contentful and Next.js. Everything on this page comes from the CMS.",
-    ctaLabel: "Start reading",
-    ctaUrl: "/articles",
-  }),
-  image: L(assetRef("img-hero")),
-});
-await upsertEntry("featureGrid", "grid-why", {
-  ...fields({ title: "Why a headless CMS?", intro: "Four ideas that explain the whole approach." }),
-  features: L(featureData.map(([id]) => entryRef(id))),
-});
-await upsertEntry("articleList", "list-latest", fields({ title: "Latest articles", intro: "Pulled live from Contentful.", count: 3 }));
-await upsertEntry("ctaBanner", "cta-explore", fields({
-  heading: "Looking for something specific?",
-  text: "Use the search box in the header to find any article.",
-  buttonLabel: "Browse all articles",
-  buttonUrl: "/articles",
-}));
-await upsertEntry("hero", "hero-about", {
-  ...fields({
-    heading: "About this project",
-    subheading: "A small teaching site that shows how Contentful content becomes a real website.",
-  }),
-  image: L(assetRef("img-hero")),
-});
-await upsertEntry("featureGrid", "grid-stack", {
-  ...fields({ title: "What is inside", intro: "The pieces you can explain to your team." }),
-  features: L(["feat-edit", "feat-reuse", "feat-fast"].map(entryRef)),
-});
-
-console.log("Pages...");
-await upsertEntry("page", "page-home", {
-  ...fields({ title: "Home", slug: "home", description: "Learn Contentful step by step." }),
-  sections: L(["hero-home", "grid-why", "list-latest", "cta-explore"].map(entryRef)),
-});
-await upsertEntry("page", "page-about", {
-  ...fields({ title: "About", slug: "about", description: "What this project is and how it works." }),
-  sections: L(["hero-about", "grid-stack", "cta-explore"].map(entryRef)),
-});
-
-console.log("Navigation...");
-const links = [
-  ["link-home", "Home", "/"],
-  ["link-articles", "Articles", "/articles"],
-  ["link-about", "About", "/about"],
-  ["link-search", "Search", "/search"],
-];
-for (const [id, label, url] of links) await upsertEntry("link", id, fields({ label, url }));
-
-await upsertEntry("siteSettings", "site-settings", {
-  ...fields({
-    siteName: "Contentful Compass",
-    tagline: "A beginner's guide to headless content",
-    footerText: "Practice project. Built with Contentful and Next.js.",
-  }),
-  navigation: L(["link-home", "link-articles", "link-about"].map(entryRef)),
-  footerLinks: L(["link-articles", "link-about", "link-search"].map(entryRef)),
-});
-
-console.log("Done. Open http://localhost:3000");
+console.log("Blog done.");
