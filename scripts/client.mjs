@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import contentful from "contentful-management";
+import { createClient } from "contentful-management";
 
 // Local runs read .env.local. In GitHub Actions the values come from repository secrets.
 config({ path: ".env.local", quiet: true });
@@ -13,5 +13,8 @@ if (!token || !spaceId) {
   process.exit(1);
 }
 
-export const cma = contentful.createClient({ accessToken: token }, { type: "plain" });
+export const cma = createClient({ accessToken: token }, { type: "plain" });
 export const scope = { spaceId, environmentId };
+
+// The SDK throws an error named "NotFound" with a JSON message when a resource is missing.
+export const isNotFound = (err) => err?.name === "NotFound" || String(err?.message).includes('"status": 404');

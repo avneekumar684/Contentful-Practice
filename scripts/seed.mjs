@@ -2,7 +2,7 @@
 // Fills the space with sample content for the "Contentful Compass" learning site:
 // images, categories, articles, pages, navigation. Safe to run again (fixed IDs).
 import sharp from "sharp";
-import { cma, scope, spaceId } from "./client.mjs";
+import { cma, scope, spaceId, isNotFound } from "./client.mjs";
 
 const LOCALE = "en-US";
 const L = (value) => ({ [LOCALE]: value });
@@ -19,7 +19,7 @@ async function upsertEntry(contentTypeId, entryId, data) {
     const existing = await cma.entry.get(params);
     entry = await cma.entry.update(params, { ...existing, fields: data });
   } catch (err) {
-    if (!String(err.message).includes("NotFound")) throw err;
+    if (!isNotFound(err)) throw err;
     entry = await cma.entry.createWithId({ ...scope, contentTypeId, entryId }, { fields: data });
   }
   await cma.entry.publish(params, entry);
@@ -33,7 +33,7 @@ async function upsertAsset(assetId, title, buffer, fileName) {
     const existing = await cma.asset.get(params);
     if (existing.sys.publishedVersion) return assetId;
   } catch (err) {
-    if (!String(err.message).includes("NotFound")) throw err;
+    if (!isNotFound(err)) throw err;
     const upload = await cma.upload.create({ spaceId }, { file: buffer });
     await cma.asset.createWithId(params, {
       fields: {

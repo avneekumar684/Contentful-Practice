@@ -1,7 +1,7 @@
 // Usage: npm run model
 // Creates (or updates) every content type from content-model.mjs and publishes it.
 // Safe to run again: existing types are updated instead of duplicated.
-import { cma, scope, spaceId } from "./client.mjs";
+import { cma, scope, spaceId, isNotFound } from "./client.mjs";
 import { contentTypes } from "./content-model.mjs";
 
 console.log(`Syncing ${contentTypes.length} content types to space ${spaceId}...`);
@@ -12,7 +12,7 @@ for (const { id, ...definition } of contentTypes) {
   try {
     existing = await cma.contentType.get(params);
   } catch (err) {
-    if (!String(err.message).includes("NotFound")) throw err;
+    if (!isNotFound(err)) throw err;
   }
 
   // Reference validations point at other types, so every type is created first
